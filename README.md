@@ -1,269 +1,131 @@
-# Itsytv – Lemelson fork
+# TV Remote for Mac
 
-> This is a fork of [nickustinov/itsytv-macos](https://github.com/nickustinov/itsytv-macos), kept in sync with upstream and extended. All credit for Itsytv goes to Nick Ustinov. Changes that make sense for everyone are sent upstream as pull requests.
->
-> The fork's work lives on the **`custom`** branch. Everything is in this one repo: the core package (upstream [itsytv-core](https://github.com/nickustinov/itsytv-core) plus this fork's changes) is included in [`ItsytvCore/`](ItsytvCore).
+**An Apple TV remote that lives in your Mac's menu bar.** Arrow keys move, Return selects, Esc goes back. When the Apple TV opens its on-screen keyboard, a text field pops up on the Mac by itself, so you just type.
 
-## What this fork adds
+[Русская версия](README.ru.md)
 
-- **Shortcut hints on the remote** – "Show shortcut hints" in the panel's ⋯ menu labels every button with its key.
-- **Keyboard Shortcuts window** – ⋯ → "Keyboard shortcuts…": a copy of the remote with every key labelled plus the full list. Press a shortcut or click a button and it lights up; nothing is sent to the Apple TV, so it's a safe place to learn the keys.
-- **Custom shortcuts** – click the keys of any row in that window and type new ones. Conflicts swap automatically; each row and the whole list can be restored to defaults.
-- **Real press-and-hold from the keyboard** – esc, ⌫, ↩ and space send button-down on key down and button-up on key up, exactly like the Siri Remote: hold esc → Home screen, hold ⌫ → Control Center, hold ↩ → context menu. macOS key repeat no longer fires a burst of clicks, and the held button is drawn pressed. (Uses the new `pressDown` / `release` in `ItsytvCore`.)
-- **Keys only go to the remote** – typing in other windows of the app never reaches the TV.
-- **Show artwork** toggle in the ⋯ menu (on by default) – hide the artwork square for a shorter panel.
-- **Bigger close button.**
-- **No Itsyhome promo** in the status menu (fork only – not proposed upstream).
-- **Remote comes to the current desktop** – if it was left open on another Space or behind a full-screen app, clicking the menu bar icon or the device brings it here instead of doing nothing.
-- **Searchable name** – installed as "Apple TV Remote – Пульт ТВ (Itsytv)", so Spotlight and Launchpad find it by "remote", "apple tv", "пульт", "тв" or "itsytv".
+![macOS 14+](https://img.shields.io/badge/macOS-14%2B-brightgreen.svg)
+![tvOS 15+](https://img.shields.io/badge/tvOS-15%2B-black.svg)
+![Swift](https://img.shields.io/badge/swift-5.10-orange.svg)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 
-<img src="docs/fork/shortcuts-window.png" width="520" alt="Keyboard Shortcuts window" />
+<img src="docs/fork/shortcuts-window.png" width="520" alt="The remote with its keyboard shortcuts shown" />
 
-### Build the fork
+- Works over your home network, the same way the iPhone remote does. No cloud, no account, no subscription.
+- Free and open source.
+- Built on [Itsytv](https://github.com/nickustinov/itsytv-macos) by Nick Ustinov. What's different is [listed below](#how-it-differs-from-itsytv).
 
-```bash
-git clone https://github.com/Lemelson/itsytv-macos.git
-cd itsytv-macos
-xcodegen generate
-open itsytv.xcodeproj
-```
+## What it does
 
-Build Release, replace the copy in /Applications and start it: `scripts/install-fork.sh` (set `DEVELOPMENT_TEAM` for your own signing team).
+**Remote**
+- Floating remote panel from the menu bar: d-pad, Select, Back, TV/Home, Play/Pause, volume.
+- Full keyboard control: arrows, Return, Esc, Delete, Space. Holding a key works like holding a Siri Remote button.
+- Shortcut hints on the buttons, and a Keyboard Shortcuts window where you can try every key and change it.
 
----
+**Typing**
+- The text field opens on its own when a text field on the Apple TV gets focus (search, logins, YouTube, Netflix…) and closes when it loses focus.
+- Text already typed on the TV shows up on the Mac. Delete works letter by letter.
+- ↑ and ↓ leave the field and go straight to the TV.
+- Any input language your Mac has, including Russian, Japanese and Korean.
 
-# Itsytv
+**Everything else**
+- Now playing: artwork, title, progress, playback controls.
+- App launcher with every app on the Apple TV, drag to reorder.
+- Several Apple TVs, with a global hotkey for each.
+- Launch at login, AppleScript and a Shortcuts action.
 
-[![Release](https://img.shields.io/github/v/release/nickustinov/itsytv-macos)](https://github.com/nickustinov/itsytv-macos/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/nickustinov/itsytv-macos/total)](https://github.com/nickustinov/itsytv-macos/releases)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Swift 5.10](https://img.shields.io/badge/swift-5.10-orange.svg)](https://swift.org)
-[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-brightgreen.svg)](https://www.apple.com/macos/sonoma/)
-[![Homebrew](https://img.shields.io/badge/homebrew-cask-yellow.svg)](https://formulae.brew.sh/cask/itsytv)
+## How it differs from Itsytv
 
-A native macOS menu bar app for controlling your Apple TV. macOS has no built-in Apple TV remote – Itsytv fills the gap: d-pad, keyboard navigation, live text input, now playing, and an app launcher, speaking the same local-network protocol the Siri Remote uses. Free and open source (MIT), installable via Homebrew.
+[Itsytv](https://github.com/nickustinov/itsytv-macos) is the original app this project grew from. It's sold on the Mac App Store and is also free on GitHub. This project goes its own way:
 
-[![Download on the Mac App Store](https://developer.apple.com/app-store/marketing/guidelines/images/badge-download-on-the-mac-app-store.svg)](https://apps.apple.com/app/itsytv/id6759216148)
-
-![itsytv hero](https://itsytv.app/itsytv-hero.png)
-
-## Also on iPhone
-
-Itsytv is now available on iOS with the same core experience plus features designed for mobile:
-
-- **TMDB lookup** for what's playing – poster art, ratings, and details for movies and TV shows
-- **Ergonomic design** for left- and right-handed use
-
-<p>
-  <img src="https://itsytv.app/_next/image?url=%2Fiphone-main.png&w=3840&q=75" width="300" alt="Itsytv iPhone remote" />
-  &nbsp;&nbsp;
-  <img src="https://itsytv.app/_next/image?url=%2Fiphone-app-launcher.png&w=3840&q=75" width="300" alt="Itsytv iPhone app launcher" />
-</p>
-
-[![Download on the App Store](https://developer.apple.com/app-store/marketing/guidelines/images/badge-download-on-the-app-store.svg)](https://apps.apple.com/app/itsytv/id6759216148)
-
-## Features
-
-- **Menu bar remote** – control your Apple TV from a compact floating panel
-- **D-pad and buttons** – circular d-pad with directional navigation, select, home, menu/back, play/pause
-- **Keyboard navigation** – arrow keys, Return, Backspace, Escape, Space mapped to remote buttons, held like the Siri Remote (hold Escape for the Home screen). Optional key hints on the remote, and a Keyboard shortcuts window to try and change every key
-- **Text input** – type directly into Apple TV text fields with a live keyboard
-- **Now playing** – artwork, title, artist, progress bar, and playback controls
-- **App launcher** – grid of installed apps with icons fetched from the App Store; drag to reorder
-- **Multiple devices** – pair and switch between multiple Apple TVs
-- **Global hotkeys** – assign keyboard shortcuts to instantly open the remote for specific Apple TVs
-- **Per-device panel position** – remembers where you placed the remote for each Apple TV
-- **Launch at login** – optional auto-start from the menu bar
-- **Unpair** – remove pairing credentials from the panel menu
-- **AppleScript & Shortcuts** – script play/pause from anything that runs AppleScript
-
-## AppleScript and Shortcuts automation
-
-Itsytv exposes AppleScript commands, so the Apple TV becomes scriptable from Shortcuts, Keyboard Maestro, Hammerspoon, Raycast, or a plain shell:
-
-```bash
-osascript -e 'tell application "itsytv" to pause'
-osascript -e 'tell application "itsytv" to play'
-```
-
-Both commands are no-ops when nothing is playing, so they are safe to fire blindly. Some ideas:
-
-- A Shortcuts automation that pauses the Apple TV when a calendar meeting starts (Run AppleScript action)
-- A Hammerspoon or Keyboard Maestro hotkey that toggles playback without touching a remote
-- A cron job or `at` timer that pauses playback at bedtime
-
-There is also a Shortcuts action to open the remote panel for a specific Apple TV – handy on a Stream Deck.
-
-## Perfect companion to Itsyhome
-
-Itsytv pairs naturally with [Itsyhome](https://itsyhome.app) – a free macOS menu bar app for controlling your HomeKit devices. Manage lights, cameras, thermostats, locks, scenes, and 18+ accessory types without ever opening the Home app.
-
-![Itsyhome](https://itsytv.app/itsyhome.png)
+| | Itsytv | TV Remote for Mac |
+|---|---|---|
+| Keyboard on the Mac when the TV asks for text | open it yourself with ⌘K | **opens by itself** |
+| Text already typed on the TV | not shown | **shown, editable** |
+| Leaving the text field | ⌘K again | **↑ / ↓, or it closes with the TV's field** |
+| Connection after the link drops | can loop or lose key presses | **reconnects with backoff, keys wait for the link** |
+| Remote left open on another desktop | stays there | **comes to the current desktop** |
+| Finding the app in Spotlight | "itsytv" | **"remote", "apple tv", "пульт", "тв"** |
+| Build | two repositories side by side | **one repository** |
+| Promo for other apps in the menu | yes | **no** |
+| Shortcut hints, shortcuts window, custom keys, real key holds | yes, since 1.8 | yes (they started here) |
 
 ## Install
 
-```bash
-brew install --cask itsytv
-```
+There's no signed download yet, so for now you build it yourself. It takes a few minutes.
 
-Or download the latest DMG from [GitHub releases](https://github.com/nickustinov/itsytv-macos/releases).
-
-## Troubleshooting
-
-### Apple TV doesn't show a PIN code when pairing
-
-If you send a pairing request but no PIN appears on your TV screen, your Apple TV is likely restricting which devices can connect to it. To fix this:
-
-1. Open **Settings > AirPlay and Apple Home** on your Apple TV
-2. Set **Allow access** to **Anyone on the same network**
-3. Set **Require Password** to **Off** (after pairing is completed, Require Password can be turned back on)
-4. Go to **Settings > General > Restrictions**
-5. Set both **AirPlay Settings** and **Remote App Pairing** to **Allow**
-
-The settings in step 2 and 5 need to stay on this value for itsytv to maintain a connection to your Apple TV.
-
-### Remote disappears after a few seconds
-
-If the remote panel closes on its own shortly after connecting, your Apple TV's AirPlay access setting is likely set to **Only people sharing this home**. Open **Settings** on your Apple TV, go to **AirPlay and Apple Home**, and change **Allow access** to **Anyone on the same network**.
-
-### Nothing happens when I launch the app
-
-Itsytv is a menu bar app – it lives in the top-right area of your screen as a small TV icon, not in the Dock. On MacBooks with a notch, macOS hides menu bar icons that don't fit behind the notch – silently, with no warning. If your menu bar is crowded, the itsytv icon may be there but invisible.
-
-To fix this, hold **Cmd** and drag any icons you don't need off the menu bar. Once itsytv appears, Cmd-drag it to the right so it stays visible.
-
-## FAQ
-
-**Is it free?**
-On the Mac, yes – free via Homebrew or the DMG, MIT-licensed open source. The [Mac App Store version](https://apps.apple.com/app/itsytv/id6759216148) is a one-time $4.99 universal purchase that also covers iPhone and iPad. No subscription, ads, or in-app purchases anywhere.
-
-**Which Apple TVs work?**
-Apple TV 4th generation or later running tvOS 15+, on the same local network as the Mac. Older Apple TVs don't support the protocol.
-
-**Do I need the physical Siri Remote to pair?**
-No. The Apple TV shows a four-digit PIN on the TV screen and you type it into Itsytv. Credentials are stored in the macOS Keychain and the connection is end-to-end encrypted.
-
-**How is this different from other Apple TV remote apps?**
-Itsytv speaks Apple's native MediaRemote/Companion protocol over the local network – the same one the Siri Remote uses – so input is instant, with no cloud service or polling in between. Most remote apps in this category charge a subscription; Itsytv doesn't, and on the Mac you can read the source to verify what it does.
-
-**Can it change the TV volume?**
-Yes, when the Apple TV controls volume over HDMI-CEC (Settings → Remotes and Devices → Volume Control on the Apple TV). Learned infrared volume codes only work from the physical remote, since Macs have no IR blaster.
-
-More guides: [control Apple TV from your Mac](https://itsytv.app/en/guides/control-apple-tv-from-mac) · [Apple TV pairing troubleshooting](https://itsytv.app/en/apple-tv-pairing) · [all Apple TV remote guides](https://itsytv.app/en/guides)
-
-## Architecture
-
-This app is a thin macOS UI layer on top of [itsytv-core](https://github.com/nickustinov/itsytv-core) – a Swift package that implements the Apple TV Companion Link and AirPlay protocols. The same core powers both the macOS and iOS apps.
-
-```
-itsytv-macos/
-├── itsytvApp.swift              # App entry point
-├── UI/
-│   ├── AppController.swift      # NSStatusItem, menu, floating panel, keyboard monitor
-│   ├── MenuBarView.swift        # SwiftUI views: remote, now playing, app grid
-│   ├── RemoteShortcuts.swift    # Shortcut hints on the remote, key → Apple TV button
-│   ├── ShortcutsWindow.swift    # Keyboard shortcuts window: try and change every key
-│   └── AppIconLoader.swift      # App icons from iTunes Lookup API
-├── Shortcuts/
-│   ├── RemoteShortcut.swift     # The remote's shortcut table and custom keys
-│   └── ShortcutKeys.swift       # A key with modifiers, and how it's drawn
-├── DesignSystem/
-│   ├── DesignSystem.swift       # Colours, typography, spacing, sizing tokens
-│   └── HighlightingMenuItemView.swift
-├── AppIntents/
-│   └── OpenRemoteIntent.swift   # Shortcuts action to open the remote for a specific Apple TV
-├── MRP/
-│   └── Proto/                   # Protobuf definitions (.proto files)
-└── Utilities/
-    ├── UpdateChecker.swift      # GitHub release checker
-    └── HotkeyManager.swift      # Global hotkey registration
-```
-
-All protocol, crypto, discovery, and device management code lives in [itsytv-core](https://github.com/nickustinov/itsytv-core).
-
-## Requirements
-
-- macOS 14.0 or later
-- Xcode 16.0 or later
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen) for project generation
-- Apple TV running tvOS 15 or later on the same local network
-
-## Setup
-
-### 1. Clone the repositories
-
-```bash
-git clone https://github.com/nickustinov/itsytv-macos.git
-git clone https://github.com/nickustinov/itsytv-core.git
-```
-
-Both repositories must be side by side – the Xcode project references `../itsytv-core` as a local Swift package.
-
-### 2. Install XcodeGen
+You need: a Mac with macOS 14 or later, Xcode 16 or later, and an Apple TV (4th generation or later, tvOS 15+) on the same network.
 
 ```bash
 brew install xcodegen
+git clone https://github.com/Lemelson/tv-remote-for-mac.git
+cd tv-remote-for-mac
+DEVELOPMENT_TEAM=<your Apple team ID> scripts/install-fork.sh
 ```
 
-### 3. Generate the Xcode project
+The script builds a Release copy, puts it in /Applications as "Apple TV Remote – Пульт ТВ" and starts it. Your team ID is in Xcode → Settings → Accounts.
+
+Prefer Xcode? Run `xcodegen generate`, open `itsytv.xcodeproj`, pick your team under Signing & Capabilities and run the **itsytv** scheme.
+
+## First connection
+
+1. Click the TV icon in the menu bar and pick your Apple TV.
+2. The TV shows a four-digit code. Type it on the Mac.
+3. Done. The pairing is stored in the macOS Keychain and the connection is encrypted.
+
+## Keyboard shortcuts
+
+| Key | Apple TV |
+|---|---|
+| ← ↑ → ↓ | move |
+| Return | select (hold: context menu) |
+| Esc | back (hold: Home screen) |
+| Delete | TV / Home (hold: Control Center) |
+| Space | play / pause |
+| = / − | volume up / down |
+| ⇧⌘M | mute |
+| ⌘K | type on the Apple TV |
+| ⌘F | search apps |
+| ⌘W | close the remote |
+
+Change any of them in the remote's ⋯ menu → Keyboard shortcuts…
+
+## Scripting
 
 ```bash
-cd itsytv-macos
-xcodegen generate
+osascript -e 'tell application id "com.itsytv.app" to pause'
+osascript -e 'tell application id "com.itsytv.app" to play'
 ```
 
-### 4. Open and run
+There's also a Shortcuts action that opens the remote for a given Apple TV, handy on a Stream Deck.
 
-```bash
-open itsytv.xcodeproj
-```
+## Troubleshooting
 
-Select the **itsytv** scheme and run.
+**No code on the TV when pairing.** On the Apple TV, open Settings → AirPlay and Apple Home and set Allow access to "Anyone on the same network". Turn Require Password off while pairing. In Settings → General → Restrictions, allow AirPlay Settings and Remote App Pairing.
 
-## Building
+**The remote closes a few seconds after connecting.** Same setting: Allow access must be "Anyone on the same network", not "Only people sharing this home".
 
-The project uses XcodeGen to generate the Xcode project from `project.yml`. After making changes to project configuration:
+**No icon in the menu bar.** On MacBooks with a notch, macOS hides icons that don't fit. Hold ⌘ and drag other icons out of the menu bar.
 
-```bash
-xcodegen generate
-```
+**Volume doesn't change.** The Mac can only change volume when the Apple TV controls it over HDMI-CEC (Settings → Remotes and Devices → Volume Control). Infrared volume works only from the physical remote.
 
-## Releasing
+## How it works
 
-1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`
-2. Update `CHANGELOG.md`
-3. Build, sign, and package the DMG:
+The Apple TV speaks two local protocols, the same ones the iPhone remote uses:
 
-```bash
-bash scripts/build-release.sh
-```
+- **Companion Link**: buttons, touch, app list, and text input. When a text field on the TV gets focus, the TV sends a `_tiStarted` event with the current text. That's what makes the Mac's field open by itself.
+- **MediaRemote over an AirPlay tunnel**: what's playing, artwork, progress.
 
-4. Notarize and staple:
-
-```bash
-xcrun notarytool submit dist/Itsytv-<VERSION>.dmg \
-    --apple-id <APPLE_ID> --team-id <TEAM_ID> \
-    --password <APP_SPECIFIC_PASSWORD> --wait
-xcrun stapler staple dist/Itsytv-<VERSION>.dmg
-```
-
-5. Create the GitHub release:
-
-```bash
-gh release create v<VERSION> dist/Itsytv-<VERSION>.dmg \
-    --title "v<VERSION>" --notes "Release notes here"
-```
-
-6. **Homebrew cask** – itsytv is in the official [homebrew-cask](https://formulae.brew.sh/cask/itsytv) repository with autobump enabled. BrewTestBot automatically detects new GitHub releases and opens a PR within ~3 hours. No manual action needed.
+Both are end-to-end encrypted after a one-time pairing (SRP and ChaCha20-Poly1305). The protocol code is in [`ItsytvCore/`](ItsytvCore). The menu bar app is in [`itsytv/`](itsytv).
 
 ## License
 
-MIT License (c) 2026 Nick Ustinov – see [LICENSE](LICENSE) for details.
+- The project as a whole, and every change made here, is licensed under **[GPL-3.0](LICENSE)**.
+- Code that comes from Itsytv stays under its original **[MIT license](LICENSE-MIT)**, © 2026 Nick Ustinov.
 
-## Author
+## Thanks
 
-**Nick Ustinov** – [@nickustinov](https://github.com/nickustinov)
+- [Itsytv](https://github.com/nickustinov/itsytv-macos) by Nick Ustinov, the app this one is built on.
+- [pyatv](https://github.com/postlund/pyatv), the Python library that documented most of the Apple TV protocols.
 
-## Acknowledgements
-
-Protocol implementation informed by [pyatv](https://github.com/postlund/pyatv), the comprehensive Python library for Apple TV control.
+Apple TV and macOS are trademarks of Apple Inc. This project is not affiliated with Apple.

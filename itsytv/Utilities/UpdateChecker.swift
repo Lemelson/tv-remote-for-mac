@@ -12,7 +12,7 @@ enum UpdateChecker {
     }
 
     static func check() {
-        let url = URL(string: "https://api.github.com/repos/nickustinov/itsytv-macos/releases/latest")!
+        let url = URL(string: "https://api.github.com/repos/Lemelson/tv-remote-for-mac/releases/latest")!
         var request = URLRequest(url: url)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
@@ -20,6 +20,11 @@ enum UpdateChecker {
             DispatchQueue.main.async {
                 if let error {
                     showAlert(message: "Failed to check for updates: \(error.localizedDescription)")
+                    return
+                }
+                // No release published yet: nothing newer to offer.
+                if (response as? HTTPURLResponse)?.statusCode == 404 {
+                    showUpToDate(version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")
                     return
                 }
                 guard let data else {
@@ -61,7 +66,7 @@ enum UpdateChecker {
     private static func showUpdateAvailable(version: String, url: String) {
         let alert = NSAlert()
         alert.messageText = "Update available: \(version)"
-        alert.informativeText = "A new version of itsytv is available."
+        alert.informativeText = "A new version of TV Remote for Mac is available."
         alert.alertStyle = .informational
         alert.addButton(withTitle: "Open downloads")
         alert.addButton(withTitle: "Later")
@@ -74,7 +79,7 @@ enum UpdateChecker {
     private static func showUpToDate(version: String) {
         let alert = NSAlert()
         alert.messageText = "You're up to date"
-        alert.informativeText = "itsytv \(version) is the latest version."
+        alert.informativeText = "TV Remote for Mac \(version) is the latest version."
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.runModal()
