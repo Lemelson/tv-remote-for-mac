@@ -94,7 +94,12 @@ public final class AppleTVManager {
     public var osVersion: String?
     public var isScanning = false
     public var installedApps: [(bundleID: String, name: String)] = []
+    /// A text field on the Apple TV is focused and its on-screen keyboard is up.
     public var keyboardFocused = false
+    /// Text already in the focused Apple TV field when it opened.
+    public var remoteFieldText = ""
+    /// Bumped on every `_tiStarted`, so the UI reacts even if it was already focused.
+    public var keyboardFocusCounter = 0
     public var mrpManager = MRPManager()
     public var keyboardBlinkButton: CompanionButton = .select
     public var keyboardBlinkCounter = 0
@@ -115,12 +120,16 @@ public final class AppleTVManager {
     /// Text input session state — kept alive while connected.
     private var textInputSessionUUID: Data?
     private var sentText = ""
+    private var ignoreTextInputStoppedUntil = Date.distantPast
     private var pendingCompanionCommands: [() -> Void] = []
     private var mrpRetryCount = 0
     private static let maxMRPRetries = 3
     private var isReconnecting = false
     private var companionRetryCount = 0
-    private static let maxCompanionRetries = 3
+    private static let maxCompanionRetries = 5
+    /// A reconnect that hasn't finished pair-verify by then counts as failed
+    /// (an unreachable Apple TV can leave the link waiting forever).
+    private static let companionReconnectTimeout: TimeInterval = 10
 
     private let discovery = DeviceDiscovery()
 
@@ -182,39 +191,23 @@ public final class AppleTVManager {
         let conn = CompanionConnection()
         self.connection = conn
 
-        conn.onDisconnect = { [weak self] error in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                // Once connected or mid-verify after pairing, the companion link
-                // closing is expected — MRP runs over the AirPlay tunnel.
-                if self.connectionStatus == .connected || self.currentCredentials != nil {
-                    log.info("Companion link closed while session active — reconnecting")
-                    self.connection?.stopKeepAlive()
-                    self.connection?.stopTextInput()
-                    self.connection = nil
-                    self.textInputSessionUUID = nil
-                    self.sentText = ""
-                    self.reconnectCompanion()
-                    return
-                }
-                if let error {
-                    self.connectionStatus = .error(error.localizedDescription)
-                } else {
-                    self.connectionStatus = .disconnected
-                }
-                self.connectedDeviceName = nil
-                self.connectedDevice = nil
+        let onLost: (Swift.Error?) -> Void = { [weak self] error in
+            guard let self else { return }
+            // Once connected or mid-verify after pairing, the companion link
+            // closing is expected — MRP runs over the AirPlay tunnel.
+            if self.connectionStatus == .connected || self.currentCredentials != nil {
+                log.info("Companion link closed while session active — reconnecting")
+                self.companionLinkLost()
+                return
             }
-        }
-
-        conn.onFrame = { [weak self] frame in
-            self?.handleFrame(frame)
-        }
-
-        conn.onLocalNetworkDenied = { [weak self] in
-            DispatchQueue.main.async {
-                self?.connectionStatus = .localNetworkDenied
+            self.connection = nil
+            if let error {
+                self.connectionStatus = .error(error.localizedDescription)
+            } else {
+                self.connectionStatus = .disconnected
             }
+            self.connectedDeviceName = nil
+            self.connectedDevice = nil
         }
 
         // Check for stored credentials (keyed by rpBA)
@@ -237,16 +230,34 @@ public final class AppleTVManager {
             }
         }
 
-        conn.onConnect = { [weak self] in
+        attach(conn, onReady: { [weak self] in
             // Ready after a local network denial means the user allowed access in the meantime.
-            DispatchQueue.main.async {
-                if self?.connectionStatus == .localNetworkDenied {
-                    self?.connectionStatus = .connecting
-                }
+            if self?.connectionStatus == .localNetworkDenied {
+                self?.connectionStatus = .connecting
             }
             startSession()
-        }
+        }, onLost: onLost)
         conn.connectToService(name: device.name)
+    }
+
+    /// Route a companion link's callbacks to the main thread – all manager state lives
+    /// there – and drop any from a link already replaced, so a late drop of the old
+    /// link can't tear down the new one.
+    private func attach(
+        _ conn: CompanionConnection,
+        onReady: @escaping () -> Void,
+        onLost: @escaping (Swift.Error?) -> Void
+    ) {
+        let onMain: (@escaping (AppleTVManager) -> Void) -> Void = { [weak self, weak conn] body in
+            DispatchQueue.main.async {
+                guard let self, let conn, self.connection === conn else { return }
+                body(self)
+            }
+        }
+        conn.onConnect = { onMain { _ in onReady() } }
+        conn.onDisconnect = { error in onMain { _ in onLost(error) } }
+        conn.onFrame = { frame in onMain { $0.handleFrame(frame) } }
+        conn.onLocalNetworkDenied = { onMain { $0.connectionStatus = .localNetworkDenied } }
     }
 
     public func disconnect() {
@@ -264,6 +275,7 @@ public final class AppleTVManager {
         currentCredentials = nil
         textInputSessionUUID = nil
         keyboardFocused = false
+        remoteFieldText = ""
         sentText = ""
         mrpRetryCount = 0
         companionRetryCount = 0
@@ -460,17 +472,12 @@ public final class AppleTVManager {
                 handler(uuid)
                 return
             }
-            connection.stopTextInput { _ in
-                connection.startTextInput { response in
-                    guard let content = response["_c"],
-                          let tiData = content["_tiD"]?.dataValue,
-                          let result = try? TextInputSession.decodeStartResponse(tiData) else {
-                        log.debug("No active text field")
-                        return
-                    }
-                    self?.textInputSessionUUID = result.sessionUUID
-                    handler(result.sessionUUID)
+            self?.fetchTextInputSession { result in
+                guard let result else {
+                    log.warning("Keyboard: no active text field on the Apple TV, typing dropped")
+                    return
                 }
+                handler(result.sessionUUID)
             }
         }
 
@@ -490,9 +497,48 @@ public final class AppleTVManager {
         }
     }
 
+    /// Ask the Apple TV for its focused text field (session + text already typed
+    /// there) and show it in our field. Used when the user opens our field by hand.
+    public func syncTextInputFromTV() {
+        fetchTextInputSession { [weak self] result in
+            guard let self, let result else {
+                log.notice("Keyboard: opened by hand, no text field focused on the Apple TV")
+                return
+            }
+            self.remoteFieldText = result.currentText
+            self.keyboardFocused = true
+            self.keyboardFocusCounter &+= 1
+        }
+    }
+
+    /// Restart the text input session and read the current field. On success the
+    /// session and `sentText` already match the Apple TV when `completion` runs (on main).
+    private func fetchTextInputSession(completion: @escaping ((sessionUUID: Data, currentText: String)?) -> Void) {
+        guard let connection else { completion(nil); return }
+        // Our own _tiStop may echo back as _tiStopped; don't close the field for it.
+        ignoreTextInputStoppedUntil = Date().addingTimeInterval(1.5)
+        connection.stopTextInput { _ in
+            connection.startTextInput { [weak self] response in
+                let tiData = response["_c"]?["_tiD"]?.dataValue
+                let result = tiData.flatMap { try? TextInputSession.decodeStartResponse($0) }
+                if let tiData { TextInputSession.logStructure(tiData) }
+                DispatchQueue.main.async {
+                    if let result {
+                        self?.textInputSessionUUID = result.sessionUUID
+                        self?.sentText = result.currentText
+                    }
+                    completion(result)
+                }
+            }
+        }
+    }
+
     /// Reset local text tracking (call when closing keyboard).
+    /// Also drops the cached session: the Apple TV hands out a new one for every
+    /// text field it focuses, so the next keystroke fetches the current one.
     public func resetTextInputState() {
         sentText = ""
+        textInputSessionUUID = nil
     }
 
     private func applyTouchTranslation(_ translation: CGPoint) {
@@ -736,18 +782,7 @@ public final class AppleTVManager {
 
                 if isReconnecting {
                     log.info("Pair-verify failed during reconnect — retrying")
-                    connection?.disconnect()
-                    connection = nil
-                    if companionRetryCount < Self.maxCompanionRetries {
-                        companionRetryCount += 1
-                        DispatchQueue.global().asyncAfter(deadline: .now() + 1) { [weak self] in
-                            self?.reconnectCompanion()
-                        }
-                    } else {
-                        log.warning("Companion reconnect retries exhausted")
-                        companionRetryCount = 0
-                        isReconnecting = false
-                    }
+                    companionLinkLost()
                 } else {
                     let message: String
                     if error is CryptoKit.CryptoKitError {
@@ -822,12 +857,14 @@ public final class AppleTVManager {
             }
             self?.connection?.startKeepAlive()
             self?.connection?.startTouchSession()
-            // Start text input listener (like pyatv does on connect)
+            self?.connection?.subscribeToTextInputEvents()
+            // Start text input listener (like pyatv does on connect). If the Apple TV
+            // is already on a keyboard, this is our only "field focused" signal.
             self?.connection?.startTextInput { [weak self] response in
-                if let content = response["_c"],
-                   let tiData = content["_tiD"]?.dataValue,
-                   let result = try? TextInputSession.decodeStartResponse(tiData) {
-                    self?.textInputSessionUUID = result.sessionUUID
+                if response["_c"]?["_tiD"]?.dataValue != nil {
+                    self?.handleTextInputStarted(response["_c"])
+                } else {
+                    log.notice("Keyboard: no text field focused at connect")
                 }
             }
             // tvOS 26.5+ silently drops FetchLaunchableApplicationsEvent
@@ -852,45 +889,67 @@ public final class AppleTVManager {
         }
     }
 
+    /// The current companion link dropped (or a reconnect attempt failed): close it
+    /// and try again with a growing pause, giving up after `maxCompanionRetries`
+    /// failures in a row. The counter resets once pair-verify succeeds.
+    private func companionLinkLost() {
+        connection?.disconnect()
+        connection = nil
+        textInputSessionUUID = nil
+        sentText = ""
+        isReconnecting = true
+
+        guard companionRetryCount < Self.maxCompanionRetries else {
+            log.warning("Companion reconnect retries exhausted — disconnecting")
+            disconnect()
+            return
+        }
+        // The first reconnect is immediate (the link closing is routine), then 1, 2, 4, 8 s.
+        let delay = companionRetryCount == 0 ? 0 : min(8, pow(2, Double(companionRetryCount - 1)))
+        companionRetryCount += 1
+        let deviceID = connectedDevice?.id
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.isReconnecting, self.connection == nil,
+                  self.connectedDevice?.id == deviceID else { return }
+            self.reconnectCompanion()
+        }
+    }
+
     private func reconnectCompanion() {
         guard let device = connectedDevice, let credentials = currentCredentials else {
             log.warning("Cannot reconnect companion: no device or credentials")
+            isReconnecting = false
             return
         }
 
         isReconnecting = true
-        log.info("Reconnecting companion link to \(device.name)")
+        log.info("Reconnecting companion link to \(device.name) (attempt \(self.companionRetryCount))")
         let conn = CompanionConnection()
         self.connection = conn
 
-        conn.onDisconnect = { [weak self] error in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                if self.connectionStatus == .connected {
-                    log.info("Companion link closed while MRP tunnel active — reconnecting")
-                    self.connection?.stopKeepAlive()
-                    self.connection?.stopTextInput()
-                    self.connection = nil
-                    self.textInputSessionUUID = nil
-                    self.sentText = ""
-                    self.reconnectCompanion()
-                    return
-                }
-            }
-        }
-
-        conn.onFrame = { [weak self] frame in
-            self?.handleFrame(frame)
-        }
-
-        conn.onConnect = { [weak self] in
+        attach(conn, onReady: { [weak self] in
             self?.startPairVerify(credentials: credentials)
-        }
+        }, onLost: { [weak self] _ in
+            log.info("Companion reconnect attempt lost")
+            self?.companionLinkLost()
+        })
         conn.connectToService(name: device.name)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.companionReconnectTimeout) { [weak self, weak conn] in
+            guard let self, let conn, self.connection === conn, self.isReconnecting else { return }
+            log.warning("Companion reconnect timed out")
+            self.companionLinkLost()
+        }
+    }
+
+    /// Commands go out only on a verified, encrypted link. While a reconnect runs the
+    /// status stays `.connected` (MRP still works), but the new link isn't verified yet.
+    private var isCompanionReady: Bool {
+        connectionStatus == .connected && connection != nil && !isReconnecting
     }
 
     private func performOrQueueCompanionCommand(_ command: @escaping () -> Void) {
-        if connectionStatus == .connected, connection != nil {
+        if isCompanionReady {
             command()
             return
         }
@@ -904,7 +963,7 @@ public final class AppleTVManager {
     }
 
     private func ensureCompanionConnectionForPendingCommands() -> Bool {
-        if connectionStatus == .connected, connection != nil {
+        if isCompanionReady || (connectionStatus == .connected && isReconnecting) {
             return true
         }
         // A connection is under way – a denied one keeps waiting for local network access.
@@ -947,7 +1006,7 @@ public final class AppleTVManager {
                 if self.mrpRetryCount < Self.maxMRPRetries {
                     self.mrpRetryCount += 1
                     log.info("MRP tunnel lost — retrying (\(self.mrpRetryCount)/\(Self.maxMRPRetries))")
-                    DispatchQueue.global().asyncAfter(deadline: .now() + 1) { [weak self] in
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
                         self?.startMRPViaTunnel()
                     }
                 } else {
@@ -960,7 +1019,7 @@ public final class AppleTVManager {
             }
         }
         mrpManager.onReady = { [weak self] in
-            self?.mrpRetryCount = 0
+            DispatchQueue.main.async { self?.mrpRetryCount = 0 }
         }
         mrpManager.onKeyboardFocusChange = { [weak self] focused in
             DispatchQueue.main.async {
@@ -1026,6 +1085,14 @@ public final class AppleTVManager {
         case CompanionMessageType.event.rawValue:
             let eventName = message["_i"]?.stringValue
             log.debug("Event: \(eventName ?? "?")")
+            switch eventName {
+            case "_tiStarted":
+                handleTextInputStarted(message["_c"])
+            case "_tiStopped":
+                handleTextInputStopped()
+            default:
+                break
+            }
 
         case CompanionMessageType.response.rawValue:
             let xid = message["_x"]?.intValue ?? -1
@@ -1033,6 +1100,42 @@ public final class AppleTVManager {
 
         default:
             log.debug("Unhandled OPACK message type: \(type ?? -1)")
+        }
+    }
+
+    // MARK: - Apple TV keyboard focus
+
+    /// The Apple TV focused a text field: it pushes `_tiStarted` with a fresh
+    /// session (the same signal the iPhone uses to pop its keyboard). The old
+    /// session UUID is dead from now on, so typing must target this one.
+    private func handleTextInputStarted(_ content: OPACK.Value?) {
+        guard let tiData = content?["_tiD"]?.dataValue,
+              let result = try? TextInputSession.decodeStartResponse(tiData) else {
+            log.notice("Keyboard: text input payload without a readable session")
+            return
+        }
+        TextInputSession.logStructure(tiData)
+        log.notice("Keyboard: Apple TV text field focused (text: \(result.currentText.count) chars)")
+        DispatchQueue.main.async {
+            self.textInputSessionUUID = result.sessionUUID
+            self.sentText = result.currentText
+            self.remoteFieldText = result.currentText
+            self.keyboardFocused = true
+            self.keyboardFocusCounter &+= 1
+        }
+    }
+
+    private func handleTextInputStopped() {
+        DispatchQueue.main.async {
+            if Date() < self.ignoreTextInputStoppedUntil {
+                log.notice("Keyboard: _tiStopped after our own restart, ignored")
+                return
+            }
+            log.notice("Keyboard: Apple TV text field closed")
+            self.textInputSessionUUID = nil
+            self.sentText = ""
+            self.remoteFieldText = ""
+            self.keyboardFocused = false
         }
     }
 }

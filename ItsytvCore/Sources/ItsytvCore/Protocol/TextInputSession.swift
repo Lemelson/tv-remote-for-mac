@@ -148,7 +148,8 @@ enum TextInputSession {
             throw Error.missingSessionUUID
         }
 
-        // Extract current text from documentState if present
+        // Current text lives in documentState → docSt (TIDocumentState): the text
+        // before the cursor, any selection and the text after it.
         var currentText = ""
         if let docStateIdx = uidValue(top["documentState"]),
            docStateIdx < objects.count,
@@ -156,15 +157,45 @@ enum TextInputSession {
            let docStIdx = uidValue(docState["docSt"]),
            docStIdx < objects.count,
            let innerState = objects[docStIdx] as? [String: Any] {
-            // Look for contextBeforeInput in the TIDocumentState
-            if let textIdx = uidValue(innerState["contextBeforeInput"]),
-               textIdx < objects.count,
-               let text = objects[textIdx] as? String {
-                currentText = text
-            }
+            currentText = ["contextBeforeInput", "selectedText", "contextAfterInput"]
+                .compactMap { string(innerState[$0], in: objects) }
+                .joined()
         }
 
         return (sessionUUID: sessionUUID, currentText: currentText)
+    }
+
+    /// Resolve an archived string: a UID pointing at a plain string, or at an
+    /// `NSMutableString` stored as a dict with `NS.string` / `NS.bytes`.
+    static func string(_ ref: Any?, in objects: [Any]) -> String? {
+        guard let idx = uidValue(ref), idx < objects.count else { return nil }
+        let obj = objects[idx]
+        if let text = obj as? String { return text == "$null" ? nil : text }
+        if let dict = obj as? [String: Any] {
+            if let text = dict["NS.string"] as? String { return text }
+            if let bytes = dict["NS.bytes"] as? Data { return String(data: bytes, encoding: .utf8) }
+        }
+        return nil
+    }
+
+    /// Log the keys of the text-input payload (no typed text), to see where the
+    /// Apple TV keeps the field contents when parsing finds none.
+    static func logStructure(_ data: Data) {
+        guard let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+              let objects = plist["$objects"] as? [Any],
+              let top = plist["$top"] as? [String: Any] else {
+            log.notice("Keyboard payload: not a keyed archive (\(data.count) bytes)")
+            return
+        }
+        let shape = objects.enumerated().map { idx, obj -> String in
+            switch obj {
+            case let dict as [String: Any]: return "[\(idx)] {\(dict.keys.sorted().joined(separator: ","))}"
+            case let text as String: return "[\(idx)] str(\(text.count))"
+            case let bytes as Data: return "[\(idx)] data(\(bytes.count))"
+            default: return "[\(idx)] \(type(of: obj))"
+            }
+        }
+        log.notice("Keyboard payload: top={\(top.keys.sorted().joined(separator: ","))} \(shape.joined(separator: " "))")
     }
 
     /// Extract the integer value from a UID reference. Handles both:

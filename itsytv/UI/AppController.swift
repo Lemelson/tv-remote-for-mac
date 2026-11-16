@@ -750,8 +750,12 @@ final class AppController: NSObject, NSMenuDelegate {
 
     private func handleRemoteKeyDown(_ event: NSEvent) -> Bool {
         guard let shortcut = RemoteShortcut.match(event) else { return false }
-        // ⌘ shortcuts work even when text input is focused; plain keys go to the field
-        if !shortcut.usesCommand && isTextInputFocused { return false }
+        // ⌘ shortcuts work even when text input is focused; plain keys go to the field,
+        // except ↑/↓ while the Apple TV's own text field is up: the one-line field has
+        // no use for them, and on the TV they move focus off the field (which closes ours).
+        if !shortcut.usesCommand && isTextInputFocused && !leavesTVTextField(shortcut, event) {
+            return false
+        }
 
         switch shortcut {
         case .close:
@@ -781,6 +785,12 @@ final class AppController: NSObject, NSMenuDelegate {
             }
         }
         return true
+    }
+
+    /// A real ↑/↓ arrow (not a key remapped to up/down) while a TV text field is focused.
+    private func leavesTVTextField(_ shortcut: RemoteShortcut, _ event: NSEvent) -> Bool {
+        guard manager.keyboardFocused, shortcut == .up || shortcut == .down else { return false }
+        return event.specialKey == .upArrow || event.specialKey == .downArrow
     }
 
     /// Field editor, NSTextField or SwiftUI text in the panel has focus.

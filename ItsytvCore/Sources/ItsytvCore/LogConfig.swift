@@ -23,6 +23,11 @@ struct CoreLog {
         logger.debug("\(message, privacy: .public)")
     }
 
+    /// Always logged: rare state changes worth seeing in a release build.
+    func notice(_ message: String) {
+        logger.notice("\(message, privacy: .public)")
+    }
+
     func warning(_ message: String) {
         logger.warning("\(message, privacy: .public)")
     }

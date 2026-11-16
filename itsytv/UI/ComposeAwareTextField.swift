@@ -29,20 +29,33 @@ struct ComposeAwareTextField: NSViewRepresentable {
         field.font = .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium)
         field.cell?.lineBreakMode = .byTruncatingTail
         field.delegate = context.coordinator
-        // Auto-focus on appear
+        // Auto-focus on appear, cursor after the text (focusing selects it all by default,
+        // which makes the next key wipe text already typed on the Apple TV)
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)
             field.window?.makeFirstResponder(field)
+            Self.moveCursorToEnd(field)
         }
         return field
     }
 
     func updateNSView(_ nsView: NSTextField, context: Context) {
-        // Only update if the field is not currently being edited (avoid fighting the user)
-        guard nsView.currentEditor() == nil else { return }
-        if nsView.stringValue != text {
+        // While typing, `text` already mirrors the field, so a mismatch means the text
+        // came from outside (e.g. read back from the Apple TV). Leave an in-progress
+        // IME composition alone so it isn't torn up.
+        guard nsView.stringValue != text else { return }
+        if let editor = nsView.currentEditor() as? NSTextView {
+            guard !editor.hasMarkedText() else { return }
+            nsView.stringValue = text
+            Self.moveCursorToEnd(nsView)
+        } else {
             nsView.stringValue = text
         }
+    }
+
+    static func moveCursorToEnd(_ field: NSTextField) {
+        guard let editor = field.currentEditor() else { return }
+        editor.selectedRange = NSRange(location: (field.stringValue as NSString).length, length: 0)
     }
 
     func makeCoordinator() -> Coordinator {

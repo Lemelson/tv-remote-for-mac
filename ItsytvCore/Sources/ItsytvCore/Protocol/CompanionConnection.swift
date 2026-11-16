@@ -6,13 +6,23 @@ private let log = CoreLog(category: "Connection")
 
 /// Manages a TCP connection to an Apple TV's Companion Link service.
 /// Handles frame parsing, encryption, and request/response correlation.
+///
+/// Commands are sent from the main thread, global queues (button release, swipes)
+/// and the keep-alive timer at once. `lock` guards everything a send touches: the
+/// encrypt nonce must match the order frames reach the wire, or the Apple TV fails
+/// to decrypt and drops the link. Receiving runs on the private serial `queue`.
 final class CompanionConnection {
+    private let lock = NSLock()
+    private let queue = DispatchQueue(label: "com.itsytv.companion", qos: .userInitiated)
     private var connection: NWConnection?
     private var buffer = Data()
     private var crypto: CompanionCrypto?
     private var nextXID: Int64
     private var pendingResponses: [Int64: (OPACK.Value) -> Void] = [:]
     private var keepAliveTimer: DispatchSourceTimer?
+    /// Set once the link is gone (or closed by us): `onDisconnect` fires at most once,
+    /// even though a drop shows up both as a receive error and as a `.failed` state.
+    private var isClosed = false
     var touchBaseTimestamp: TimeInterval = 0
 
     var onFrame: ((CompanionFrame) -> Void)?
@@ -24,6 +34,11 @@ final class CompanionConnection {
 
     init() {
         nextXID = Int64.random(in: 1...10000)
+    }
+
+    deinit {
+        keepAliveTimer?.cancel()
+        connection?.cancel()
     }
 
     /// Whether a connection waits because local network access is denied – either the path
@@ -51,16 +66,19 @@ final class CompanionConnection {
                 log.warning("Local network access denied – waiting for the user to allow it")
                 self?.onLocalNetworkDenied?()
             case .failed(let error):
-                self?.onDisconnect?(error)
+                self?.reportDisconnect(error)
             case .cancelled:
-                self?.onDisconnect?(nil)
+                self?.reportDisconnect(nil)
             default:
                 break
             }
         }
 
-        connection.start(queue: .global(qos: .userInitiated))
-        self.connection = connection
+        lock.withLock {
+            self.connection = connection
+            isClosed = false
+        }
+        connection.start(queue: queue)
     }
 
     func connect(host: String, port: UInt16) {
@@ -82,41 +100,82 @@ final class CompanionConnection {
         connect(to: endpoint)
     }
 
+    /// Close the link on purpose: `onDisconnect` is not called.
     func disconnect() {
-        stopKeepAlive()
-        connection?.cancel()
-        connection = nil
-        crypto = nil
-        buffer = Data()
-        pendingResponses.removeAll()
+        close()
+    }
+
+    /// The link dropped: close it for good (the old `NWConnection` is cancelled, not
+    /// left hanging) and tell the owner once.
+    private func reportDisconnect(_ error: Swift.Error?) {
+        guard close() else { return }
+        onDisconnect?(error)
+    }
+
+    /// Returns false when already closed.
+    @discardableResult
+    private func close() -> Bool {
+        let (wasOpen, nw): (Bool, NWConnection?) = lock.withLock {
+            guard !isClosed else { return (false, nil) }
+            isClosed = true
+            keepAliveTimer?.cancel()
+            keepAliveTimer = nil
+            let nw = connection
+            connection = nil
+            crypto = nil
+            pendingResponses.removeAll()
+            return (true, nw)
+        }
+        guard wasOpen else { return false }
+        nw?.cancel()
+        queue.async { self.buffer = Data() }
+        return true
     }
 
     func enableEncryption(_ crypto: CompanionCrypto) {
-        self.crypto = crypto
+        lock.withLock { self.crypto = crypto }
     }
 
     /// Start sending periodic NoOp frames to keep the connection alive.
     func startKeepAlive(interval: TimeInterval = 30) {
-        stopKeepAlive()
         let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
         timer.schedule(deadline: .now() + interval, repeating: interval)
         timer.setEventHandler { [weak self] in
-            guard let self, self.connection != nil else { return }
             log.debug("Sending keep-alive NoOp")
-            self.send(frame: CompanionFrame(type: .noOp, payload: Data()))
+            self?.send(frame: CompanionFrame(type: .noOp, payload: Data()))
         }
+        // Resume before handing it over: a dispatch source released while suspended crashes.
         timer.resume()
-        keepAliveTimer = timer
+        lock.withLock {
+            keepAliveTimer?.cancel()
+            keepAliveTimer = nil
+            if isClosed { timer.cancel() } else { keepAliveTimer = timer }
+        }
     }
 
     func stopKeepAlive() {
-        keepAliveTimer?.cancel()
-        keepAliveTimer = nil
+        lock.withLock {
+            keepAliveTimer?.cancel()
+            keepAliveTimer = nil
+        }
     }
+
 
     /// Send a raw frame. If encryption is active, encrypts the payload.
     func send(frame: CompanionFrame, completion: ((Swift.Error?) -> Void)? = nil) {
+        lock.lock()
+        defer { lock.unlock() }
+        sendLocked(frame: frame, completion: completion)
+    }
+
+    /// Encrypt and hand the frame to the network in one critical section, so nonce
+    /// order and wire order agree. `NWConnection.send` only enqueues, it never blocks.
+    private func sendLocked(frame: CompanionFrame, completion: ((Swift.Error?) -> Void)?) {
         log.debug("Sending frame: type=\(String(describing: frame.type)) payload=\(frame.payload.count) bytes")
+        guard let connection else {
+            if let completion { DispatchQueue.global().async { completion(nil) } }
+            return
+        }
         var wireData: Data
 
         if let crypto, !frame.payload.isEmpty {
@@ -132,23 +191,29 @@ final class CompanionConnection {
                 let encrypted = try crypto.encrypt(frame.payload, aad: header)
                 wireData = header + encrypted
             } catch {
-                completion?(error)
+                if let completion { DispatchQueue.global().async { completion(error) } }
                 return
             }
         } else {
             wireData = frame.serialize()
         }
 
-        connection?.send(content: wireData, completion: .contentProcessed { error in
+        connection.send(content: wireData, completion: .contentProcessed { error in
             completion?(error)
         })
     }
 
     /// Send an OPACK command as an encrypted (or unencrypted) frame.
     func sendCommand(_ payload: OPACK.Value, completion: ((Swift.Error?) -> Void)? = nil) {
+        lock.lock()
+        defer { lock.unlock() }
+        sendCommandLocked(payload, completion: completion)
+    }
+
+    private func sendCommandLocked(_ payload: OPACK.Value, completion: ((Swift.Error?) -> Void)?) {
         let data = OPACK.pack(payload)
         let frameType: CompanionFrameType = crypto != nil ? .opackEncrypted : .opackUnencrypted
-        send(frame: CompanionFrame(type: frameType, payload: data), completion: completion)
+        sendLocked(frame: CompanionFrame(type: frameType, payload: data), completion: completion)
     }
 
     /// Send a request (type=2) with an auto-incrementing XID. Returns the XID used.
@@ -159,10 +224,12 @@ final class CompanionConnection {
         responseHandler: ((OPACK.Value) -> Void)? = nil,
         completion: ((Swift.Error?) -> Void)? = nil
     ) -> Int64 {
+        lock.lock()
+        defer { lock.unlock() }
         let xid = nextXID
         nextXID += 1
 
-        if let responseHandler {
+        if let responseHandler, !isClosed {
             pendingResponses[xid] = responseHandler
         }
 
@@ -177,15 +244,16 @@ final class CompanionConnection {
             pairs.append(("_c", content))
         }
 
-        sendCommand(.dictionary(pairs), completion: completion)
+        sendCommandLocked(.dictionary(pairs), completion: completion)
         return xid
     }
 
     /// Dispatch a response to its pending handler. Returns true if a handler was found.
     @discardableResult
     func dispatchResponse(xid: Int64, message: OPACK.Value) -> Bool {
-        guard let handler = pendingResponses.removeValue(forKey: xid) else {
-            log.debug("No pending handler for xid=\(xid) (pending: \(self.pendingResponses.keys.sorted()))")
+        // Run the handler outside the lock: it usually sends the next command.
+        guard let handler = lock.withLock({ pendingResponses.removeValue(forKey: xid) }) else {
+            log.debug("No pending handler for xid=\(xid)")
             return false
         }
         log.debug("Dispatching response for xid=\(xid)")
@@ -208,6 +276,7 @@ final class CompanionConnection {
     // MARK: - Receiving
 
     private func startReceiving() {
+        let connection = lock.withLock { self.connection }
         connection?.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] content, _, isComplete, error in
             if let content {
                 log.debug("Received \(content.count) bytes on wire (buffer was \(self?.buffer.count ?? 0) bytes)")
@@ -216,10 +285,10 @@ final class CompanionConnection {
             }
             if isComplete {
                 log.info("Connection complete (EOF)")
-                self?.onDisconnect?(nil)
+                self?.reportDisconnect(nil)
             } else if let error {
                 log.error("Connection error: \(error.localizedDescription)")
-                self?.onDisconnect?(error)
+                self?.reportDisconnect(error)
             } else {
                 self?.startReceiving()
             }
@@ -231,6 +300,7 @@ final class CompanionConnection {
             guard let (frame, consumed) = CompanionFrame.parse(from: buffer) else { break }
 
             var processed = frame
+            let crypto = lock.withLock { self.crypto }
 
             // Decrypt if needed
             if let crypto, !frame.payload.isEmpty,
