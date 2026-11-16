@@ -125,10 +125,9 @@ struct RemoteControlView: View {
                             // Keyboard button
                             Button {
                                 showingKeyboard.toggle()
-                                if !showingKeyboard {
-                                    keyboardText = ""
-                                    manager.resetTextInputState()
-                                }
+                                keyboardText = ""
+                                manager.resetTextInputState()
+                                if showingKeyboard { manager.syncTextInputFromTV() }
                             } label: {
                                 Image(systemName: "keyboard")
                                     .font(.system(size: 11, weight: .medium))
@@ -157,7 +156,20 @@ struct RemoteControlView: View {
         }
         .onChange(of: manager.keyboardToggleCounter) { _, _ in
             showingKeyboard.toggle()
-            if !showingKeyboard {
+            keyboardText = ""
+            manager.resetTextInputState()
+            if showingKeyboard { manager.syncTextInputFromTV() }
+        }
+        .onChange(of: manager.keyboardFocusCounter) { _, _ in
+            // The Apple TV focused a text field: open ours, like the iPhone remote does.
+            selectedTab = .remote
+            keyboardText = manager.remoteFieldText
+            showingKeyboard = true
+        }
+        .onChange(of: manager.keyboardFocused) { _, focused in
+            // The Apple TV closed its on-screen keyboard: close ours too.
+            if !focused && showingKeyboard {
+                showingKeyboard = false
                 keyboardText = ""
                 manager.resetTextInputState()
             }
@@ -179,6 +191,11 @@ struct RemoteControlView: View {
             // `onChange` never sees that initial value — arm the hint here too so
             // a stuck connection reliably surfaces the unpair option.
             if !isConnected { scheduleUnpairHint() }
+            // The Apple TV may have focused a text field before this view existed.
+            if manager.keyboardFocused {
+                keyboardText = manager.remoteFieldText
+                showingKeyboard = true
+            }
         }
         #if APPSTORE
         .task(id: isConnected) { await askForReviewAfterUse() }

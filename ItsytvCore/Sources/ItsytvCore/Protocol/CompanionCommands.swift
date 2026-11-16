@@ -190,6 +190,14 @@ extension CompanionConnection {
         )
     }
 
+    /// Ask the Apple TV to push `_tiStarted` / `_tiStopped` when one of its text
+    /// fields gains or loses focus (how the iPhone remote knows to show its keyboard).
+    func subscribeToTextInputEvents() {
+        sendEvent(name: "_interest", content: .dictionary([
+            ("_regEvents", .array([.string("_tiStarted"), .string("_tiStopped")])),
+        ]))
+    }
+
     /// Start a text input session. The response contains a session UUID and current text.
     func startTextInput(responseHandler: @escaping (OPACK.Value) -> Void) {
         sendRequest(eventName: "_tiStart", content: .dict([]), responseHandler: responseHandler)
