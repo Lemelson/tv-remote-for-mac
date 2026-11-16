@@ -1159,7 +1159,7 @@ struct LocalNetworkDeniedView: View {
             Text("Local network access is off")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
-            Text("Turn on Itsytv in System Settings → Privacy & Security → Local Network.")
+            Text("Turn on TV Remote for Mac in System Settings → Privacy & Security → Local Network.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

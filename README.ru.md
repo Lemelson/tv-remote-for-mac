@@ -55,10 +55,10 @@
 brew install xcodegen
 git clone https://github.com/Lemelson/tv-remote-for-mac.git
 cd tv-remote-for-mac
-DEVELOPMENT_TEAM=<твой Team ID> scripts/install-fork.sh
+DEVELOPMENT_TEAM=<твой Team ID> scripts/install.sh
 ```
 
-Скрипт собирает Release, кладёт приложение в «Программы» под именем «Apple TV Remote – Пульт ТВ» и запускает его. Team ID есть в Xcode → Settings → Accounts.
+Скрипт собирает Release, кладёт приложение в «Программы» под именем «TV Remote for Mac – Пульт Apple TV» и запускает его. Team ID есть в Xcode → Settings → Accounts.
 
 Через Xcode: `xcodegen generate`, открыть `itsytv.xcodeproj`, выбрать свою команду в Signing & Capabilities и запустить схему **itsytv**.
 
@@ -88,8 +88,8 @@ DEVELOPMENT_TEAM=<твой Team ID> scripts/install-fork.sh
 ## Скрипты
 
 ```bash
-osascript -e 'tell application id "com.itsytv.app" to pause'
-osascript -e 'tell application id "com.itsytv.app" to play'
+osascript -e 'tell application id "com.lemelson.tvremote" to pause'
+osascript -e 'tell application id "com.lemelson.tvremote" to play'
 ```
 
 Есть и действие для «Быстрых команд», которое открывает пульт нужной Apple TV. Удобно повесить на Stream Deck.

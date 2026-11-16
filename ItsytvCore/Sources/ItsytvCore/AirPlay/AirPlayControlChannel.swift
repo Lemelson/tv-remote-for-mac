@@ -123,7 +123,7 @@ final class AirPlayControlChannel {
                 "isRemoteControlOnly": true,
                 "qualifier": ["txtAirPlay"],
                 "timingProtocol": "None",
-                "name": "itsytv",
+                "name": "TV Remote for Mac",
                 "deviceID": "FF:FF:FF:FF:FF:FF",
                 "model": "iPhone14,3",
                 "sourceVersion": "320.20",

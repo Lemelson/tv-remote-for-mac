@@ -41,19 +41,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let hasUsedApp = manager.lastConnectedDeviceID != nil
         let showWelcome = WelcomeGate(defaults: .standard).shouldShow(
             hasUsedApp: hasUsedApp, iconHidden: appController.isIconHidden, inDock: DockIcon.isOn)
-        #if APPSTORE
+        // No promo for other apps: this project isn't on the App Store.
         let promoAvailable = false
-        #else
-        let promoAvailable = IosPromoHelper.shouldShow
-        #endif
         switch LaunchGreeting.decide(showWelcome: showWelcome, hasUsedApp: hasUsedApp, promoAvailable: promoAvailable) {
         case .welcome:
             WelcomeWindow.show(iconHidden: { appController.isIconHidden }, showDevices: appController.showDevices)
-        case .iPhonePromo:
-            #if !APPSTORE
-            IosPromoHelper.showIfNeeded()
-            #endif
-        case .nothing:
+        case .iPhonePromo, .nothing:
             break
         }
     }

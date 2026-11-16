@@ -141,7 +141,7 @@ extension CompanionConnection {
                 ("_sf", .int(256)),
                 ("_sv", .string("170.18")),
                 ("model", .string(deviceModel)),
-                ("name", .string("Itsytv")),
+                ("name", .string("TV Remote for Mac")),
             ]),
             responseHandler: responseHandler
         )

@@ -13,7 +13,7 @@ private let log = CoreLog(category: "Connection")
 /// to decrypt and drops the link. Receiving runs on the private serial `queue`.
 final class CompanionConnection {
     private let lock = NSLock()
-    private let queue = DispatchQueue(label: "com.itsytv.companion", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.lemelson.tvremote.companion", qos: .userInitiated)
     private var connection: NWConnection?
     private var buffer = Data()
     private var crypto: CompanionCrypto?

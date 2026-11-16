@@ -310,7 +310,7 @@ public final class MRPManager {
 
         var deviceInfo = MRP_DeviceInfoMessage()
         deviceInfo.uniqueIdentifier = credentials.clientID
-        deviceInfo.name = "itsytv"
+        deviceInfo.name = "TV Remote for Mac"
         deviceInfo.localizedModelName = "iPhone"
         deviceInfo.applicationBundleIdentifier = "com.apple.TVRemote"
         deviceInfo.applicationBundleVersion = "344.28"

@@ -2,7 +2,7 @@
 import AppKit
 import os.log
 
-private let log = Logger(subsystem: "com.itsytv.app", category: "UpdateChecker")
+private let log = Logger(subsystem: "com.lemelson.tvremote", category: "UpdateChecker")
 
 enum UpdateChecker {
 

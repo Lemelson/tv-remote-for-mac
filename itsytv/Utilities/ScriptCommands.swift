@@ -2,7 +2,7 @@ import AppKit
 import os.log
 import ItsytvCore
 
-private let log = Logger(subsystem: "com.itsytv.app", category: "Script")
+private let log = Logger(subsystem: "com.lemelson.tvremote", category: "Script")
 
 // Permissive on unknown state: only skip when we *know* the TV is already
 // in the requested state. nowPlaying = nil (no MRP update yet on this

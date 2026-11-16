@@ -2,7 +2,7 @@ import AppIntents
 import os.log
 import ItsytvCore
 
-private let log = Logger(subsystem: "com.itsytv.app", category: "Intent")
+private let log = Logger(subsystem: "com.lemelson.tvremote", category: "Intent")
 
 struct AppleTVDeviceEntity: AppEntity {
     static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Apple TV")
@@ -39,8 +39,8 @@ struct AppleTVDeviceQuery: EntityQuery {
 }
 
 struct OpenRemoteIntent: AppIntent {
-    static var title: LocalizedStringResource = "Open itsytv remote"
-    static var description: IntentDescription = "Opens the itsytv remote control panel for an Apple TV"
+    static var title: LocalizedStringResource = "Open TV Remote"
+    static var description: IntentDescription = "Opens the TV Remote for Mac panel for an Apple TV"
     static var openAppWhenRun = true
 
     @Parameter(title: "Apple TV", description: "Which Apple TV to control")
@@ -72,7 +72,7 @@ struct OpenRemoteIntent: AppIntent {
         var localizedStringResource: LocalizedStringResource {
             switch self {
             case .appNotReady:
-                "itsytv failed to start — please try again"
+                "TV Remote for Mac failed to start — please try again"
             }
         }
     }

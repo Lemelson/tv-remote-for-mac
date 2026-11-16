@@ -7,7 +7,7 @@ private let log = CoreLog(category: "Keychain")
 /// Stores and retrieves HAP credentials in the system Keychain.
 public enum KeychainStorage {
 
-    private static let service = "com.itsytv.credentials"
+    private static let service = "com.lemelson.tvremote.credentials"
 
     public static func save(credentials: HAPCredentials, for deviceID: String) throws {
         let data = try JSONEncoder().encode(credentials)

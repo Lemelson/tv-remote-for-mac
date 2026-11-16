@@ -12,7 +12,7 @@ final class WelcomeModel {
     }
 }
 
-/// The welcome (`WelcomeGate` decides when). Itsytv has no window and – unless chosen – no Dock icon,
+/// The welcome (`WelcomeGate` decides when). TV Remote for Mac has no window and – unless chosen – no Dock icon,
 /// so a new user whose menu bar icon is hidden sees nothing. While the icon is hidden, every choice
 /// leaves a lasting way in: there's no "Got it" and no close button.
 struct WelcomeView: View {
@@ -27,12 +27,12 @@ struct WelcomeView: View {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
                 .frame(width: 72, height: 72)
-            Text("Itsytv lives in your menu bar")
+            Text("TV Remote for Mac lives in your menu bar")
                 .font(.title2.weight(.semibold))
             if model.iconHidden {
-                Text("Its icon is hidden right now – your menu bar is full, or Itsytv is turned off in System Settings → Menu Bar.")
+                Text("Its icon is hidden right now – your menu bar is full, or TV Remote for Mac is turned off in System Settings → Menu Bar.")
                     .multilineTextAlignment(.center)
-                Text("Turn it on there (or turn off icons you don’t need), or keep Itsytv in the Dock – click it any time to open the remote.")
+                Text("Turn it on there (or turn off icons you don’t need), or keep TV Remote for Mac in the Dock – click it any time to open the remote.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -45,7 +45,7 @@ struct WelcomeView: View {
             } else {
                 Text("Click the TV icon at the top of your screen to pick your Apple TV and pair it.")
                     .multilineTextAlignment(.center)
-                Text("Can’t see the icon? Your menu bar may be full, or Itsytv is turned off in System Settings → Menu Bar. Open Itsytv again from Spotlight or Finder and it opens at the top of your screen.")
+                Text("Can’t see the icon? Your menu bar may be full, or TV Remote for Mac is turned off in System Settings → Menu Bar. Open TV Remote for Mac again from Spotlight or Finder and it opens at the top of your screen.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

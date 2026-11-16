@@ -7,7 +7,7 @@
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Apple TV Remote – Пульт ТВ (Itsytv)</string>
+	<string>TV Remote for Mac</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -29,7 +29,7 @@
 	<key>NSAppleScriptEnabled</key>
 	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>itsytv needs local network access to discover and control Apple TV devices on your network.</string>
+	<string>TV Remote for Mac needs local network access to discover and control Apple TV devices on your network.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_companion-link._tcp</string>

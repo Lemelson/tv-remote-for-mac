@@ -10,7 +10,7 @@ struct CoreLog {
     private let logger: Logger
 
     init(category: String) {
-        logger = Logger(subsystem: "com.itsytv.app", category: category)
+        logger = Logger(subsystem: "com.lemelson.tvremote", category: category)
     }
 
     func info(_ message: String) {
