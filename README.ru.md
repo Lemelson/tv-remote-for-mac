@@ -2,9 +2,14 @@
 
 **Пульт для Apple TV в строке меню Mac.** Стрелки двигают выбор, Return выбирает, Esc возвращает назад. Когда Apple TV открывает экранную клавиатуру, на Mac сама появляется строка ввода: просто печатаешь.
 
-[English version](README.md)
+[![Скачать v1.8.0 Universal DMG](https://img.shields.io/badge/Скачать_v1.8.0-Universal_DMG-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Lemelson/tv-remote-for-mac/releases/latest)
+[![Все релизы](https://img.shields.io/badge/Все_релизы-GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Lemelson/tv-remote-for-mac/releases)
 
-<img src="docs/fork/shortcuts-window.png" width="520" alt="Пульт с подсказками клавиш" />
+[English version](README.md) · [Скачать DMG](#установка)
+
+<p align="center">
+  <img src="docs/fork/shortcuts-window.png" width="520" alt="Пульт Apple TV для Mac с подсказками клавиш" />
+</p>
 
 - Работает через домашнюю сеть, так же как пульт на iPhone. Без облака, аккаунтов и подписок.
 - Бесплатно, открытый код.
@@ -47,7 +52,13 @@
 
 ## Установка
 
-Подписанной сборки для скачивания пока нет, поэтому собираешь сам. Это пара минут.
+### Вариант 1: скачать готовый Universal DMG (macOS 14+, Apple silicon и Intel)
+
+Скачай **[TV-Remote-for-Mac-1.8.0-universal.dmg](https://github.com/Lemelson/tv-remote-for-mac/releases/latest)**, открой образ и перетащи **TV Remote for Mac** в **Программы (Applications)**.
+
+Сборка подписана ad-hoc (без нотаризации Apple), поэтому при первом запуске macOS попросит подтвердить открытие: на macOS 14 — Ctrl-клик → **Открыть**; на macOS 15+ — открой один раз и нажми **Всё равно открыть** в **Системные настройки → Конфиденциальность и безопасность**.
+
+### Вариант 2: собрать из исходников
 
 Нужно: Mac с macOS 14 или новее, Xcode 16 или новее и Apple TV (4-го поколения или новее, tvOS 15+) в той же сети.
 

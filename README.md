@@ -1,15 +1,21 @@
 # TV Remote for Mac
 
-**An Apple TV remote in your Mac's menu bar.** Arrow keys move, Return selects, Esc goes back. When the Apple TV asks for text, a text field opens on the Mac by itself, so you just type.
+**An Apple TV remote in your Mac's menu bar — full customizable keyboard control, real press-and-hold, and a text field that opens automatically when the TV asks for text.**
 
-[Русская версия](README.ru.md)
+[![Download v1.8.0 Universal DMG](https://img.shields.io/badge/Download_v1.8.0-Universal_DMG-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Lemelson/tv-remote-for-mac/releases/latest)
+[![All Releases](https://img.shields.io/badge/All_Releases-GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Lemelson/tv-remote-for-mac/releases)
+
+[Русская версия](README.ru.md) · [Download DMG](#install) · [What it does](#what-it-does) · [Differences from Itsytv](#how-it-differs-from-itsytv) · [Keyboard shortcuts](#keyboard-shortcuts)
 
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-brightgreen.svg)
+![Apple Silicon & Intel](https://img.shields.io/badge/arch-Apple_Silicon_%26_Intel-informational.svg)
 ![tvOS 15+](https://img.shields.io/badge/tvOS-15%2B-black.svg)
 ![Swift](https://img.shields.io/badge/swift-5.10-orange.svg)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 
-<img src="docs/fork/shortcuts-window.png" width="520" alt="The remote with its keyboard shortcuts shown" />
+<p align="center">
+  <img src="docs/fork/shortcuts-window.png" width="520" alt="TV Remote for Mac menu bar Apple TV remote with customizable keyboard shortcuts" />
+</p>
 
 - Talks to the Apple TV directly over your home network, the same way the iPhone remote does. No cloud, no account, no subscription.
 - Free and open source.
@@ -54,7 +60,15 @@
 
 ## Install
 
-There's no signed download yet, so you build it yourself. It takes a few minutes.
+### Option 1: Download Universal DMG (macOS 14+, Apple silicon & Intel)
+
+Download **[TV-Remote-for-Mac-1.8.0-universal.dmg](https://github.com/Lemelson/tv-remote-for-mac/releases/latest)**, open it and drag **TV Remote for Mac** into **Applications**.
+
+Because this release is ad-hoc signed (not notarized by Apple), macOS asks you to confirm the first launch:
+- **macOS 14 Sonoma:** Control-click the app and choose **Open**.
+- **macOS 15+:** open the app once, then click **Open Anyway** in **System Settings → Privacy & Security**.
+
+### Option 2: Build from source
 
 **You need:** macOS 14 or later, Xcode 16 or later, and an Apple TV (4th generation or later, tvOS 15+) on the same network.
 
